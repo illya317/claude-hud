@@ -86,7 +86,7 @@ src/
 ### Output Format (default expanded layout)
 
 ```
-[Opus | Max] │ my-project git:(main*)
+[Opus] │ my-project git:(main*)
 Context █████░░░░░ 45% │ Usage ██░░░░░░░░ 25% (1h 30m / 5h)
 ```
 
