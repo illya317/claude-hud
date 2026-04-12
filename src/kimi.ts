@@ -35,7 +35,7 @@ export async function getKimiUsage(): Promise<KimiUsage | null> {
       return null;
     }
 
-    const percent = usage.usedPercent ?? 0;
+    const percent = Math.round(usage.usedPercent ?? 0);
     const desc = usage.resetDescription ?? "0/0";
     const resetsAtStr = usage.resetsAt;
 
