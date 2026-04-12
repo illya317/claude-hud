@@ -1,4 +1,4 @@
-import type { RenderContext } from '../types.js';
+import type { RenderContext, KimiUsage } from '../types.js';
 import { isLimitReached } from '../types.js';
 import { getContextPercent, getBufferedPercent, getModelName, formatModelName, getProviderLabel, getTotalTokens } from '../stdin.js';
 import { getOutputSpeed } from '../speed-tracker.js';
@@ -195,6 +195,15 @@ export function renderSessionLine(ctx: RenderContext): string {
           }
         }
       }
+    }
+
+    // Add Kimi usage if available (compact mode)
+    if (display?.showKimiUsage !== false && ctx.kimiUsage) {
+      const kimi = ctx.kimiUsage;
+      const kimiColor = getQuotaColor(kimi.percent, colors);
+      const kimiBar = quotaBar(kimi.percent, barWidth, colors);
+      const kimiPart = `${kimiColor}${kimiBar}${RESET} ${kimi.percent}% (${kimi.used}/${kimi.total}) ${label(`${kimi.daysRemaining}d`, colors)}`;
+      parts.push(kimiPart);
     }
   }
 
