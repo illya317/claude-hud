@@ -126,8 +126,9 @@ export function renderSessionLine(ctx) {
             }
         }
     }
-    // Add Kimi usage as "Usage" label (compact mode) - shows Kimi data with Usage label
-    if (display?.showKimiUsage !== false && ctx.kimiUsage) {
+    // Add Kimi usage as "Usage" label (compact mode) - shows Kimi data with Usage label, only when using Kimi model
+    const modelName = getModelName(ctx.stdin).toLowerCase();
+    if (display?.showKimiUsage !== false && ctx.kimiUsage && modelName.includes('kimi')) {
         const kimi = ctx.kimiUsage;
         const kimiColor = getQuotaColor(kimi.percent, colors);
         const kimiBar = quotaBar(kimi.percent, barWidth, colors);

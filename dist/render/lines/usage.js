@@ -1,5 +1,5 @@
 import { isLimitReached } from "../../types.js";
-import { getProviderLabel } from "../../stdin.js";
+import { getProviderLabel, getModelName } from "../../stdin.js";
 import { critical, label, getQuotaColor, quotaBar, RESET } from "../colors.js";
 import { getAdaptiveBarWidth } from "../../utils/terminal.js";
 import { t } from "../../i18n/index.js";
@@ -7,23 +7,25 @@ export function renderUsageLine(ctx) {
     const display = ctx.config?.display;
     const colors = ctx.config?.colors;
     const barWidth = getAdaptiveBarWidth();
-    // Show Kimi independently when showUsage is false
+    const modelName = getModelName(ctx.stdin).toLowerCase();
+    const isKimiModel = modelName.includes('kimi');
+    // Show Kimi independently when showUsage is false, only for Kimi models
     if (display?.showUsage === false) {
-        if (display?.showKimiUsage !== false && ctx.kimiUsage) {
+        if (isKimiModel && display?.showKimiUsage !== false && ctx.kimiUsage) {
             return formatKimiUsage(ctx.kimiUsage, barWidth, colors);
         }
         return null;
     }
     if (!ctx.usageData) {
-        // Still show Kimi even if no Claude usage data
-        if (display?.showKimiUsage !== false && ctx.kimiUsage) {
+        // Still show Kimi even if no Claude usage data, only for Kimi models
+        if (isKimiModel && display?.showKimiUsage !== false && ctx.kimiUsage) {
             return formatKimiUsage(ctx.kimiUsage, barWidth, colors);
         }
         return null;
     }
     if (getProviderLabel(ctx.stdin)) {
-        // Still show Kimi even if provider label exists
-        if (display?.showKimiUsage !== false && ctx.kimiUsage) {
+        // Still show Kimi even if provider label exists, only for Kimi models
+        if (isKimiModel && display?.showKimiUsage !== false && ctx.kimiUsage) {
             return formatKimiUsage(ctx.kimiUsage, barWidth, colors);
         }
         return null;
@@ -55,7 +57,7 @@ export function renderUsageLine(ctx) {
             forceLabel: true,
         });
         let result = `${usageLabel} ${weeklyOnlyPart}`;
-        if (ctx.kimiUsage && ctx.config.display.showKimiUsage !== false) {
+        if (isKimiModel && ctx.kimiUsage && ctx.config.display.showKimiUsage !== false) {
             const kimiPart = formatKimiUsage(ctx.kimiUsage, barWidth, ctx.config?.colors);
             result += ` | ${kimiPart}`;
         }
@@ -80,15 +82,15 @@ export function renderUsageLine(ctx) {
             forceLabel: true,
         });
         let result = `${usageLabel} ${fiveHourPart} | ${sevenDayPart}`;
-        if (ctx.kimiUsage && ctx.config.display.showKimiUsage !== false) {
+        if (isKimiModel && ctx.kimiUsage && ctx.config.display.showKimiUsage !== false) {
             const kimiPart = formatKimiUsage(ctx.kimiUsage, barWidth, ctx.config?.colors);
             result += ` | ${kimiPart}`;
         }
         return result;
     }
-    // Add Kimi usage if available (merged on same line)
+    // Add Kimi usage if available (merged on same line), only for Kimi models
     let result = `${usageLabel} ${fiveHourPart}`;
-    if (ctx.kimiUsage && ctx.config.display.showKimiUsage !== false) {
+    if (isKimiModel && ctx.kimiUsage && ctx.config.display.showKimiUsage !== false) {
         const kimiPart = formatKimiUsage(ctx.kimiUsage, barWidth, ctx.config?.colors);
         result += ` | ${kimiPart}`;
     }
@@ -99,7 +101,7 @@ function formatKimiUsage(kimi, barWidth, colors) {
     const color = getQuotaColor(percent, colors);
     const bar = quotaBar(percent, barWidth, colors);
     const daysLabel = `${kimi.daysRemaining}d`;
-    return `${color}${bar}${RESET} ${percent}% (${kimi.used}/${kimi.total}) ${label(daysLabel, colors)}`;
+    return `${color}${bar}${RESET} ${percent}% ${label(daysLabel, colors)}`;
 }
 function formatUsagePercent(percent, colors) {
     if (percent === null) {
