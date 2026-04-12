@@ -50,64 +50,6 @@ export function renderSessionLine(ctx: RenderContext): string {
     parts.push(contextValueDisplay);
   }
 
-  // Project path + git status (SECOND)
-  let projectPart: string | null = null;
-  if (display?.showProject !== false && ctx.stdin.cwd) {
-    // Split by both Unix (/) and Windows (\) separators for cross-platform support
-    const segments = ctx.stdin.cwd.split(/[/\\]/).filter(Boolean);
-    const pathLevels = ctx.config?.pathLevels ?? 1;
-    // Always join with forward slash for consistent display
-    // Handle root path (/) which results in empty segments
-    const projectPath = segments.length > 0 ? segments.slice(-pathLevels).join('/') : '/';
-    projectPart = projectColor(projectPath, colors);
-  }
-
-  let gitPart = '';
-  const gitConfig = ctx.config?.gitStatus;
-  const showGit = gitConfig?.enabled ?? true;
-
-  if (showGit && ctx.gitStatus) {
-    const gitParts: string[] = [ctx.gitStatus.branch];
-
-    // Show dirty indicator
-    if ((gitConfig?.showDirty ?? true) && ctx.gitStatus.isDirty) {
-      gitParts.push('*');
-    }
-
-    // Show ahead/behind (with space separator for readability)
-    if (gitConfig?.showAheadBehind) {
-      if (ctx.gitStatus.ahead > 0) {
-        gitParts.push(` ↑${ctx.gitStatus.ahead}`);
-      }
-      if (ctx.gitStatus.behind > 0) {
-        gitParts.push(` ↓${ctx.gitStatus.behind}`);
-      }
-    }
-
-    // Show file stats in Starship-compatible format (!modified +added ✘deleted ?untracked)
-    if (gitConfig?.showFileStats && ctx.gitStatus.fileStats) {
-      const { modified, added, deleted, untracked } = ctx.gitStatus.fileStats;
-      const statParts: string[] = [];
-      if (modified > 0) statParts.push(`!${modified}`);
-      if (added > 0) statParts.push(`+${added}`);
-      if (deleted > 0) statParts.push(`✘${deleted}`);
-      if (untracked > 0) statParts.push(`?${untracked}`);
-      if (statParts.length > 0) {
-        gitParts.push(` ${statParts.join(' ')}`);
-      }
-    }
-
-    gitPart = `${gitColor('git:(', colors)}${gitBranchColor(gitParts.join(''), colors)}${gitColor(')', colors)}`;
-  }
-
-  if (projectPart && gitPart) {
-    parts.push(`${projectPart} ${gitPart}`);
-  } else if (projectPart) {
-    parts.push(projectPart);
-  } else if (gitPart) {
-    parts.push(gitPart);
-  }
-
   // Session name (custom title from /rename, or auto-generated slug)
   if (display?.showSessionName && ctx.transcript.sessionName) {
     parts.push(label(ctx.transcript.sessionName, colors));
@@ -198,13 +140,71 @@ export function renderSessionLine(ctx: RenderContext): string {
     }
   }
 
-  // Add Kimi usage if available (compact mode) - independent of Claude usage
+  // Add Kimi usage as "Usage" label (compact mode) - shows Kimi data with Usage label
   if (display?.showKimiUsage !== false && ctx.kimiUsage) {
     const kimi = ctx.kimiUsage;
     const kimiColor = getQuotaColor(kimi.percent, colors);
     const kimiBar = quotaBar(kimi.percent, barWidth, colors);
     const kimiPart = `${kimiColor}${kimiBar}${RESET} ${kimi.percent}% (${kimi.used}/${kimi.total}) ${label(`${kimi.daysRemaining}d`, colors)}`;
-    parts.push(kimiPart);
+    parts.push(`${label('Usage', colors)} ${kimiPart}`);
+  }
+
+  // Project path + git status (LAST)
+  let projectPart: string | null = null;
+  if (display?.showProject !== false && ctx.stdin.cwd) {
+    // Split by both Unix (/) and Windows (\) separators for cross-platform support
+    const segments = ctx.stdin.cwd.split(/[/\\]/).filter(Boolean);
+    const pathLevels = ctx.config?.pathLevels ?? 1;
+    // Always join with forward slash for consistent display
+    // Handle root path (/) which results in empty segments
+    const projectPath = segments.length > 0 ? segments.slice(-pathLevels).join('/') : '/';
+    projectPart = projectColor(projectPath, colors);
+  }
+
+  let gitPart = '';
+  const gitConfig = ctx.config?.gitStatus;
+  const showGit = gitConfig?.enabled ?? true;
+
+  if (showGit && ctx.gitStatus) {
+    const gitParts: string[] = [ctx.gitStatus.branch];
+
+    // Show dirty indicator
+    if ((gitConfig?.showDirty ?? true) && ctx.gitStatus.isDirty) {
+      gitParts.push('*');
+    }
+
+    // Show ahead/behind (with space separator for readability)
+    if (gitConfig?.showAheadBehind) {
+      if (ctx.gitStatus.ahead > 0) {
+        gitParts.push(` ↑${ctx.gitStatus.ahead}`);
+      }
+      if (ctx.gitStatus.behind > 0) {
+        gitParts.push(` ↓${ctx.gitStatus.behind}`);
+      }
+    }
+
+    // Show file stats in Starship-compatible format (!modified +added ✘deleted ?untracked)
+    if (gitConfig?.showFileStats && ctx.gitStatus.fileStats) {
+      const { modified, added, deleted, untracked } = ctx.gitStatus.fileStats;
+      const statParts: string[] = [];
+      if (modified > 0) statParts.push(`!${modified}`);
+      if (added > 0) statParts.push(`+${added}`);
+      if (deleted > 0) statParts.push(`✘${deleted}`);
+      if (untracked > 0) statParts.push(`?${untracked}`);
+      if (statParts.length > 0) {
+        gitParts.push(` ${statParts.join(' ')}`);
+      }
+    }
+
+    gitPart = `${gitColor('git:(', colors)}${gitBranchColor(gitParts.join(''), colors)}${gitColor(')', colors)}`;
+  }
+
+  if (projectPart && gitPart) {
+    parts.push(`${projectPart} ${gitPart}`);
+  } else if (projectPart) {
+    parts.push(projectPart);
+  } else if (gitPart) {
+    parts.push(gitPart);
   }
 
   // Session token usage (cumulative)

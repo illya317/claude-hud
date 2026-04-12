@@ -8,16 +8,29 @@ import { t } from "../../i18n/index.js";
 export function renderUsageLine(ctx: RenderContext): string | null {
   const display = ctx.config?.display;
   const colors = ctx.config?.colors;
+  const barWidth = getAdaptiveBarWidth();
 
+  // Show Kimi independently when showUsage is false
   if (display?.showUsage === false) {
+    if (display?.showKimiUsage !== false && ctx.kimiUsage) {
+      return formatKimiUsage(ctx.kimiUsage, barWidth, colors);
+    }
     return null;
   }
 
   if (!ctx.usageData) {
+    // Still show Kimi even if no Claude usage data
+    if (display?.showKimiUsage !== false && ctx.kimiUsage) {
+      return formatKimiUsage(ctx.kimiUsage, barWidth, colors);
+    }
     return null;
   }
 
   if (getProviderLabel(ctx.stdin)) {
+    // Still show Kimi even if provider label exists
+    if (display?.showKimiUsage !== false && ctx.kimiUsage) {
+      return formatKimiUsage(ctx.kimiUsage, barWidth, colors);
+    }
     return null;
   }
 
@@ -42,7 +55,6 @@ export function renderUsageLine(ctx: RenderContext): string | null {
 
   const usageBarEnabled = display?.usageBarEnabled ?? true;
   const sevenDayThreshold = display?.sevenDayThreshold ?? 80;
-  const barWidth = getAdaptiveBarWidth();
 
   if (fiveHour === null && sevenDay !== null) {
     const weeklyOnlyPart = formatUsageWindowPart({
