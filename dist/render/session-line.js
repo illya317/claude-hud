@@ -131,7 +131,7 @@ export function renderSessionLine(ctx) {
         const kimi = ctx.kimiUsage;
         const kimiColor = getQuotaColor(kimi.percent, colors);
         const kimiBar = quotaBar(kimi.percent, barWidth, colors);
-        const kimiPart = `${kimiColor}${kimiBar}${RESET} ${kimi.percent}% (${kimi.used}/${kimi.total}) ${label(`${kimi.daysRemaining}d`, colors)}`;
+        const kimiPart = `${kimiColor}${kimiBar}${RESET} ${kimi.percent}% ${label(`${kimi.daysRemaining}d`, colors)}`;
         parts.push(`${label('Usage', colors)} ${kimiPart}`);
     }
     // Project path + git status (LAST)
