@@ -42,7 +42,12 @@ export function renderUsageLine(ctx) {
             barWidth,
             forceLabel: true,
         });
-        return `${usageLabel} ${weeklyOnlyPart}`;
+        let result = `${usageLabel} ${weeklyOnlyPart}`;
+        if (ctx.kimiUsage && ctx.config.display.showKimiUsage !== false) {
+            const kimiPart = formatKimiUsage(ctx.kimiUsage, barWidth, ctx.config?.colors);
+            result += ` | ${kimiPart}`;
+        }
+        return result;
     }
     const fiveHourPart = formatUsageWindowPart({
         label: "5h",
@@ -62,9 +67,27 @@ export function renderUsageLine(ctx) {
             barWidth,
             forceLabel: true,
         });
-        return `${usageLabel} ${fiveHourPart} | ${sevenDayPart}`;
+        let result = `${usageLabel} ${fiveHourPart} | ${sevenDayPart}`;
+        if (ctx.kimiUsage && ctx.config.display.showKimiUsage !== false) {
+            const kimiPart = formatKimiUsage(ctx.kimiUsage, barWidth, ctx.config?.colors);
+            result += ` | ${kimiPart}`;
+        }
+        return result;
     }
-    return `${usageLabel} ${fiveHourPart}`;
+    // Add Kimi usage if available (merged on same line)
+    let result = `${usageLabel} ${fiveHourPart}`;
+    if (ctx.kimiUsage && ctx.config.display.showKimiUsage !== false) {
+        const kimiPart = formatKimiUsage(ctx.kimiUsage, barWidth, ctx.config?.colors);
+        result += ` | ${kimiPart}`;
+    }
+    return result;
+}
+function formatKimiUsage(kimi, barWidth, colors) {
+    const percent = kimi.percent;
+    const color = getQuotaColor(percent, colors);
+    const bar = quotaBar(percent, barWidth, colors);
+    const daysLabel = `${kimi.daysRemaining}d`;
+    return `${color}${bar}${RESET} ${percent}% (${kimi.used}/${kimi.total}) ${label(daysLabel, colors)}`;
 }
 function formatUsagePercent(percent, colors) {
     if (percent === null) {

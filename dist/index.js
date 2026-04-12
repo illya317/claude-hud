@@ -7,6 +7,7 @@ import { loadConfig } from "./config.js";
 import { parseExtraCmdArg, runExtraCmd } from "./extra-cmd.js";
 import { getClaudeCodeVersion } from "./version.js";
 import { getMemoryUsage } from "./memory.js";
+import { getKimiUsage } from "./kimi.js";
 import { setLanguage, t } from "./i18n/index.js";
 import { fileURLToPath } from "node:url";
 import { realpathSync } from "node:fs";
@@ -22,6 +23,7 @@ export async function main(overrides = {}) {
         runExtraCmd,
         getClaudeCodeVersion,
         getMemoryUsage,
+        getKimiUsage,
         render,
         now: () => Date.now(),
         log: console.log,
@@ -53,6 +55,11 @@ export async function main(overrides = {}) {
         if (config.display.showUsage !== false) {
             usageData = deps.getUsageFromStdin(stdin);
         }
+        // Fetch Kimi usage from codexbar CLI (if available)
+        let kimiUsage = null;
+        if (config.display.showKimiUsage !== false) {
+            kimiUsage = await deps.getKimiUsage();
+        }
         const extraCmd = deps.parseExtraCmdArg();
         const extraLabel = extraCmd ? await deps.runExtraCmd(extraCmd) : null;
         const sessionDuration = formatSessionDuration(transcript.sessionStart, deps.now);
@@ -72,6 +79,7 @@ export async function main(overrides = {}) {
             sessionDuration,
             gitStatus,
             usageData,
+            kimiUsage,
             memoryUsage,
             config,
             extraLabel,

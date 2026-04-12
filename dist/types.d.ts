@@ -1,5 +1,7 @@
 import type { HudConfig } from './config.js';
 import type { GitStatus } from './git.js';
+import type { KimiUsage as KimiUsageType } from './kimi.js';
+export type { KimiUsage } from './kimi.js';
 export interface StdinData {
     transcript_path?: string;
     cwd?: string;
@@ -95,6 +97,7 @@ export interface RenderContext {
     sessionDuration: string;
     gitStatus: GitStatus | null;
     usageData: UsageData | null;
+    kimiUsage: KimiUsageType | null;
     memoryUsage: MemoryInfo | null;
     config: HudConfig;
     extraLabel: string | null;

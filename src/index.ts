@@ -7,6 +7,7 @@ import { loadConfig } from "./config.js";
 import { parseExtraCmdArg, runExtraCmd } from "./extra-cmd.js";
 import { getClaudeCodeVersion } from "./version.js";
 import { getMemoryUsage } from "./memory.js";
+import { getKimiUsage } from "./kimi.js";
 import { setLanguage, t } from "./i18n/index.js";
 import type { RenderContext } from "./types.js";
 import { fileURLToPath } from "node:url";
@@ -23,6 +24,7 @@ export type MainDeps = {
   runExtraCmd: typeof runExtraCmd;
   getClaudeCodeVersion: typeof getClaudeCodeVersion;
   getMemoryUsage: typeof getMemoryUsage;
+  getKimiUsage: typeof getKimiUsage;
   render: typeof render;
   now: () => number;
   log: (...args: unknown[]) => void;
@@ -40,6 +42,7 @@ export async function main(overrides: Partial<MainDeps> = {}): Promise<void> {
     runExtraCmd,
     getClaudeCodeVersion,
     getMemoryUsage,
+    getKimiUsage,
     render,
     now: () => Date.now(),
     log: console.log,
@@ -79,6 +82,12 @@ export async function main(overrides: Partial<MainDeps> = {}): Promise<void> {
       usageData = deps.getUsageFromStdin(stdin);
     }
 
+    // Fetch Kimi usage from codexbar CLI (if available)
+    let kimiUsage: RenderContext["kimiUsage"] = null;
+    if (config.display.showKimiUsage !== false) {
+      kimiUsage = await deps.getKimiUsage();
+    }
+
     const extraCmd = deps.parseExtraCmdArg();
     const extraLabel = extraCmd ? await deps.runExtraCmd(extraCmd) : null;
 
@@ -104,6 +113,7 @@ export async function main(overrides: Partial<MainDeps> = {}): Promise<void> {
       sessionDuration,
       gitStatus,
       usageData,
+      kimiUsage,
       memoryUsage,
       config,
       extraLabel,

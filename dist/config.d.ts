@@ -62,6 +62,7 @@ export interface HudConfig {
         showMemoryUsage: boolean;
         showSessionTokens: boolean;
         showOutputStyle: boolean;
+        showKimiUsage: boolean;
         autocompactBuffer: AutocompactBufferMode;
         usageThreshold: number;
         sevenDayThreshold: number;
