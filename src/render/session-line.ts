@@ -196,15 +196,15 @@ export function renderSessionLine(ctx: RenderContext): string {
         }
       }
     }
+  }
 
-    // Add Kimi usage if available (compact mode)
-    if (display?.showKimiUsage !== false && ctx.kimiUsage) {
-      const kimi = ctx.kimiUsage;
-      const kimiColor = getQuotaColor(kimi.percent, colors);
-      const kimiBar = quotaBar(kimi.percent, barWidth, colors);
-      const kimiPart = `${kimiColor}${kimiBar}${RESET} ${kimi.percent}% (${kimi.used}/${kimi.total}) ${label(`${kimi.daysRemaining}d`, colors)}`;
-      parts.push(kimiPart);
-    }
+  // Add Kimi usage if available (compact mode) - independent of Claude usage
+  if (display?.showKimiUsage !== false && ctx.kimiUsage) {
+    const kimi = ctx.kimiUsage;
+    const kimiColor = getQuotaColor(kimi.percent, colors);
+    const kimiBar = quotaBar(kimi.percent, barWidth, colors);
+    const kimiPart = `${kimiColor}${kimiBar}${RESET} ${kimi.percent}% (${kimi.used}/${kimi.total}) ${label(`${kimi.daysRemaining}d`, colors)}`;
+    parts.push(kimiPart);
   }
 
   // Session token usage (cumulative)
