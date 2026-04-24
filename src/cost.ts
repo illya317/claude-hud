@@ -43,12 +43,13 @@ function anthropic(input: number, output: number): ModelPricing {
   };
 }
 
-// DeepSeek cache pricing: cache miss = input, cache hit = separate lower price
-function deepseek(cacheMiss: number, cacheHit: number, output: number): ModelPricing {
+// DeepSeek/Kimi cache pricing: only two tiers (hit/miss), no separate write premium.
+// cache_creation is already billed as input (cache miss), so write price = 0.
+function deepseekKimi(cacheMiss: number, cacheHit: number, output: number): ModelPricing {
   return {
     inputPricePerMillion: cacheMiss,
     outputPricePerMillion: output,
-    cacheWritePricePerMillion: cacheMiss,
+    cacheWritePricePerMillion: 0,
     cacheReadPricePerMillion: cacheHit,
     currency: 'CNY',
   };
@@ -63,13 +64,13 @@ const MODEL_PRICING: Array<{ pattern: RegExp; pricing: ModelPricing }> = [
   { pattern: /\bhaiku 3[.\s]5\b/i, pricing: anthropic(0.8, 4) },
 
   // DeepSeek (cache miss = input, cache hit = read, write = miss)
-  { pattern: /\bdeepseek[-\s]?v4[-\s]?pro\b/i, pricing: deepseek(12, 1, 24) },
-  { pattern: /\bdeepseek[-\s]?v4[-\s]?flash\b/i, pricing: deepseek(1, 0.2, 2) },
+  { pattern: /\bdeepseek[-\s]?v4[-\s]?pro\b/i, pricing: deepseekKimi(12, 1, 24) },
+  { pattern: /\bdeepseek[-\s]?v4[-\s]?flash\b/i, pricing: deepseekKimi(1, 0.2, 2) },
   // Catch-all for any DeepSeek model variant
-  { pattern: /\bdeepseek\b/i, pricing: deepseek(12, 1, 24) },
+  { pattern: /\bdeepseek\b/i, pricing: deepseekKimi(12, 1, 24) },
 
   // Kimi (cache miss = input, cache hit = read, write = miss)
-  { pattern: /\bkimi[-\s]?k?2[.\s]?6\b/i, pricing: deepseek(6.5, 1.1, 27) },
+  { pattern: /\bkimi[-\s]?k?2[.\s]?6\b/i, pricing: deepseekKimi(6.5, 1.1, 27) },
 
   // MiniMax (explicit cache write pricing)
   { pattern: /\bminimax[-\s]?m?2[.\s]?7[-\s]?highspeed\b/i, pricing: { inputPricePerMillion: 4.2, outputPricePerMillion: 16.8, cacheWritePricePerMillion: 5.25, cacheReadPricePerMillion: 0.42, currency: 'CNY' } },
