@@ -1,13 +1,45 @@
 import { getProviderLabel } from './stdin.js';
 const TOKENS_PER_MILLION = 1_000_000;
-const CACHE_WRITE_MULTIPLIER = 1.25;
-const CACHE_READ_MULTIPLIER = 0.1;
-const ANTHROPIC_MODEL_PRICING = [
-    { pattern: /\bopus 4(?: \d+)?\b/i, pricing: { inputUsdPerMillion: 15, outputUsdPerMillion: 75 } },
-    { pattern: /\bsonnet 4(?: \d+)?\b/i, pricing: { inputUsdPerMillion: 3, outputUsdPerMillion: 15 } },
-    { pattern: /\bsonnet 3 7\b/i, pricing: { inputUsdPerMillion: 3, outputUsdPerMillion: 15 } },
-    { pattern: /\bsonnet 3 5\b/i, pricing: { inputUsdPerMillion: 3, outputUsdPerMillion: 15 } },
-    { pattern: /\bhaiku 3 5\b/i, pricing: { inputUsdPerMillion: 0.8, outputUsdPerMillion: 4 } },
+function calc(tokens, pricePerMillion) {
+    return (tokens * pricePerMillion) / TOKENS_PER_MILLION;
+}
+// Anthropic cache pricing: write = input × 1.25, read = input × 0.10
+function anthropic(input, output) {
+    return {
+        inputPricePerMillion: input,
+        outputPricePerMillion: output,
+        cacheWritePricePerMillion: input * 1.25,
+        cacheReadPricePerMillion: input * 0.10,
+        currency: 'USD',
+    };
+}
+// DeepSeek cache pricing: cache miss = input, cache hit = separate lower price
+function deepseek(cacheMiss, cacheHit, output) {
+    return {
+        inputPricePerMillion: cacheMiss,
+        outputPricePerMillion: output,
+        cacheWritePricePerMillion: cacheMiss,
+        cacheReadPricePerMillion: cacheHit,
+        currency: 'CNY',
+    };
+}
+const MODEL_PRICING = [
+    // Anthropic
+    { pattern: /\bopus 4(?:[.\s]\d+)?\b/i, pricing: anthropic(15, 75) },
+    { pattern: /\bsonnet 4(?:[.\s]\d+)?\b/i, pricing: anthropic(3, 15) },
+    { pattern: /\bsonnet 3[.\s]7\b/i, pricing: anthropic(3, 15) },
+    { pattern: /\bsonnet 3[.\s]5\b/i, pricing: anthropic(3, 15) },
+    { pattern: /\bhaiku 3[.\s]5\b/i, pricing: anthropic(0.8, 4) },
+    // DeepSeek (cache miss = input, cache hit = read, write = miss)
+    { pattern: /\bdeepseek[-\s]?v4[-\s]?pro\b/i, pricing: deepseek(12, 1, 24) },
+    { pattern: /\bdeepseek[-\s]?v4[-\s]?flash\b/i, pricing: deepseek(1, 0.2, 2) },
+    // Catch-all for any DeepSeek model variant
+    { pattern: /\bdeepseek\b/i, pricing: deepseek(12, 1, 24) },
+    // Kimi (cache miss = input, cache hit = read, write = miss)
+    { pattern: /\bkimi[-\s]?k?2[.\s]?6\b/i, pricing: deepseek(6.5, 1.1, 27) },
+    // MiniMax (explicit cache write pricing)
+    { pattern: /\bminimax[-\s]?m?2[.\s]?7[-\s]?highspeed\b/i, pricing: { inputPricePerMillion: 4.2, outputPricePerMillion: 16.8, cacheWritePricePerMillion: 5.25, cacheReadPricePerMillion: 0.42, currency: 'CNY' } },
+    { pattern: /\bminimax[-\s]?m?2[.\s]?7\b/i, pricing: { inputPricePerMillion: 2.1, outputPricePerMillion: 8.4, cacheWritePricePerMillion: 2.625, cacheReadPricePerMillion: 0.42, currency: 'CNY' } },
 ];
 function normalizeModelName(modelName) {
     return modelName
@@ -18,98 +50,93 @@ function normalizeModelName(modelName) {
         .replace(/\s+/g, ' ')
         .trim();
 }
-function matchAnthropicPricing(modelName) {
+function matchPricing(modelName) {
     const normalized = normalizeModelName(modelName);
-    for (const entry of ANTHROPIC_MODEL_PRICING) {
+    for (const entry of MODEL_PRICING) {
         if (entry.pattern.test(normalized)) {
             return entry.pricing;
         }
     }
     return null;
 }
-function calculateUsd(tokens, usdPerMillion) {
-    return (tokens * usdPerMillion) / TOKENS_PER_MILLION;
-}
-function getAnthropicPricing(stdin) {
+function getModelPricing(stdin) {
     const candidates = [
         stdin.model?.display_name?.trim(),
         stdin.model?.id?.trim(),
     ];
     for (const candidate of candidates) {
-        if (!candidate) {
+        if (!candidate)
             continue;
-        }
-        const pricing = matchAnthropicPricing(candidate);
-        if (pricing) {
+        const pricing = matchPricing(candidate);
+        if (pricing)
             return pricing;
-        }
     }
     return null;
 }
 export function estimateSessionCost(stdin, sessionTokens) {
-    if (!sessionTokens) {
+    if (!sessionTokens)
         return null;
-    }
-    if (getProviderLabel(stdin)) {
+    if (getProviderLabel(stdin))
         return null;
-    }
-    const pricing = getAnthropicPricing(stdin);
-    if (!pricing) {
+    const pricing = getModelPricing(stdin);
+    if (!pricing)
         return null;
-    }
     const totalTokens = sessionTokens.inputTokens
         + sessionTokens.cacheCreationTokens
         + sessionTokens.cacheReadTokens
         + sessionTokens.outputTokens;
-    if (totalTokens === 0) {
+    if (totalTokens === 0)
         return null;
-    }
-    const inputUsd = calculateUsd(sessionTokens.inputTokens, pricing.inputUsdPerMillion);
-    const cacheCreationUsd = calculateUsd(sessionTokens.cacheCreationTokens, pricing.inputUsdPerMillion * CACHE_WRITE_MULTIPLIER);
-    const cacheReadUsd = calculateUsd(sessionTokens.cacheReadTokens, pricing.inputUsdPerMillion * CACHE_READ_MULTIPLIER);
-    const outputUsd = calculateUsd(sessionTokens.outputTokens, pricing.outputUsdPerMillion);
+    const inputCost = calc(sessionTokens.inputTokens, pricing.inputPricePerMillion);
+    const cacheCreationCost = calc(sessionTokens.cacheCreationTokens, pricing.cacheWritePricePerMillion);
+    const cacheReadCost = calc(sessionTokens.cacheReadTokens, pricing.cacheReadPricePerMillion);
+    const outputCost = calc(sessionTokens.outputTokens, pricing.outputPricePerMillion);
     return {
-        totalUsd: inputUsd + cacheCreationUsd + cacheReadUsd + outputUsd,
-        inputUsd,
-        cacheCreationUsd,
-        cacheReadUsd,
-        outputUsd,
+        totalCost: inputCost + cacheCreationCost + cacheReadCost + outputCost,
+        inputCost,
+        cacheCreationCost,
+        cacheReadCost,
+        outputCost,
+        currency: pricing.currency,
     };
 }
-function getNativeCostUsd(stdin) {
+function getNativeCost(stdin) {
     const nativeCost = stdin.cost?.total_cost_usd;
-    if (typeof nativeCost !== 'number' || !Number.isFinite(nativeCost)) {
+    if (typeof nativeCost !== 'number' || !Number.isFinite(nativeCost))
         return null;
-    }
-    if (getProviderLabel(stdin)) {
+    if (getProviderLabel(stdin))
         return null;
-    }
-    return nativeCost;
+    // For non-Anthropic models, total_cost_usd is Claude Code's estimate
+    // using Anthropic pricing — skip it and use our model-specific estimate.
+    const pricing = getModelPricing(stdin);
+    if (pricing && pricing.currency !== 'USD')
+        return null;
+    return { totalCost: nativeCost, currency: 'USD' };
 }
 export function resolveSessionCost(stdin, sessionTokens) {
-    const nativeCostUsd = getNativeCostUsd(stdin);
-    if (nativeCostUsd !== null) {
-        return {
-            totalUsd: nativeCostUsd,
-            source: 'native',
-        };
+    const nativeCost = getNativeCost(stdin);
+    if (nativeCost !== null) {
+        return { totalCost: nativeCost.totalCost, currency: nativeCost.currency, source: 'native' };
     }
     const estimate = estimateSessionCost(stdin, sessionTokens);
-    if (!estimate) {
+    if (!estimate)
         return null;
-    }
     return {
-        totalUsd: estimate.totalUsd,
+        totalCost: estimate.totalCost,
+        currency: estimate.currency,
         source: 'estimate',
     };
 }
+export function formatCost(amount, currency) {
+    const symbol = currency === 'CNY' ? '\u00A5' : '$';
+    if (amount >= 1)
+        return `${symbol}${amount.toFixed(2)}`;
+    if (amount >= 0.1)
+        return `${symbol}${amount.toFixed(3)}`;
+    return `${symbol}${amount.toFixed(4)}`;
+}
+/** @deprecated Use formatCost instead */
 export function formatUsd(amount) {
-    if (amount >= 1) {
-        return `$${amount.toFixed(2)}`;
-    }
-    if (amount >= 0.1) {
-        return `$${amount.toFixed(3)}`;
-    }
-    return `$${amount.toFixed(4)}`;
+    return formatCost(amount, 'USD');
 }
 //# sourceMappingURL=cost.js.map

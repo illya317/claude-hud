@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { _setCreateReadStreamForTests, parseTranscript } from '../dist/transcript.js';
 import { countConfigs } from '../dist/config-reader.js';
 import { getContextPercent, getBufferedPercent, getModelName, getProviderLabel, getUsageFromStdin, isBedrockModelId, stripContextSuffix, formatModelName } from '../dist/stdin.js';
-import { estimateSessionCost, resolveSessionCost, formatUsd } from '../dist/cost.js';
+import { estimateSessionCost, resolveSessionCost, formatCost } from '../dist/cost.js';
 import * as fs from 'node:fs';
 
 function restoreEnvVar(name, value) {
@@ -354,7 +354,8 @@ test('resolveSessionCost prefers native stdin cost when available', () => {
   );
 
   assert.deepEqual(cost, {
-    totalUsd: 1.23,
+    totalCost: 1.23,
+    currency: 'USD',
     source: 'native',
   });
 });
@@ -372,7 +373,7 @@ test('resolveSessionCost falls back to transcript estimation when native cost is
 
   assert.ok(cost, 'expected fallback estimate');
   assert.equal(cost?.source, 'estimate');
-  assert.equal(formatUsd(cost?.totalUsd ?? 0), '$5.47');
+  assert.equal(formatCost(cost?.totalCost ?? 0, cost?.currency ?? 'USD'), '$5.47');
 });
 
 test('resolveSessionCost ignores native cost for provider-routed sessions', () => {
@@ -408,7 +409,7 @@ test('resolveSessionCost falls back when native cost is invalid', () => {
 
   assert.ok(cost, 'expected fallback estimate');
   assert.equal(cost?.source, 'estimate');
-  assert.equal(formatUsd(cost?.totalUsd ?? 0), '$1.09');
+  assert.equal(formatCost(cost?.totalCost ?? 0, cost?.currency ?? 'USD'), '$1.09');
 });
 
 test('estimateSessionCost still calculates transcript-based Anthropic pricing', () => {
@@ -423,7 +424,7 @@ test('estimateSessionCost still calculates transcript-based Anthropic pricing', 
   );
 
   assert.ok(estimate, 'expected transcript estimate');
-  assert.equal(formatUsd(estimate.totalUsd), '$1.09');
+  assert.equal(formatCost(estimate.totalCost, estimate.currency), '$1.09');
 });
 
 

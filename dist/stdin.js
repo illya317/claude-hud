@@ -1,11 +1,8 @@
 import { AUTOCOMPACT_BUFFER_PERCENT } from './constants.js';
-const DEFAULT_FIRST_BYTE_TIMEOUT_MS = 250;
+const DEFAULT_FIRST_BYTE_TIMEOUT_MS = 1000;
 const DEFAULT_IDLE_TIMEOUT_MS = 30;
 const DEFAULT_MAX_STDIN_BYTES = 256 * 1024;
 export async function readStdin(stream = process.stdin, options = {}) {
-    if (stream.isTTY) {
-        return null;
-    }
     const firstByteTimeoutMs = options.firstByteTimeoutMs ?? DEFAULT_FIRST_BYTE_TIMEOUT_MS;
     const idleTimeoutMs = options.idleTimeoutMs ?? DEFAULT_IDLE_TIMEOUT_MS;
     const maxBytes = options.maxBytes ?? DEFAULT_MAX_STDIN_BYTES;

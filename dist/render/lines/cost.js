@@ -1,4 +1,4 @@
-import { resolveSessionCost, formatUsd } from '../../cost.js';
+import { resolveSessionCost, formatCost } from '../../cost.js';
 import { t } from '../../i18n/index.js';
 import { label } from '../colors.js';
 export function renderCostEstimate(ctx) {
@@ -10,6 +10,6 @@ export function renderCostEstimate(ctx) {
         return null;
     }
     const labelKey = cost.source === 'native' ? 'label.cost' : 'label.estimatedCost';
-    return label(`${t(labelKey)} ${formatUsd(cost.totalUsd)}`, ctx.config?.colors);
+    return label(`${t(labelKey)} ${formatCost(cost.totalCost, cost.currency)}`, ctx.config?.colors);
 }
 //# sourceMappingURL=cost.js.map
