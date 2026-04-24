@@ -212,6 +212,7 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
   };
 
   let parsedCleanly = false;
+  let lastUsage: { input: number; output: number; cacheRead: number; cacheCreation: number } | null = null;
 
   try {
     const fileStream = createReadStreamImpl(transcriptPath);
@@ -233,10 +234,23 @@ export async function parseTranscript(transcriptPath: string): Promise<Transcrip
         // Accumulate token usage from assistant messages
         if (entry.type === 'assistant' && entry.message?.usage) {
           const usage = entry.message.usage;
-          sessionTokens.inputTokens += normalizeTokenCount(usage.input_tokens);
-          sessionTokens.outputTokens += normalizeTokenCount(usage.output_tokens);
-          sessionTokens.cacheCreationTokens += normalizeTokenCount(usage.cache_creation_input_tokens);
-          sessionTokens.cacheReadTokens += normalizeTokenCount(usage.cache_read_input_tokens);
+          const input = normalizeTokenCount(usage.input_tokens);
+          const output = normalizeTokenCount(usage.output_tokens);
+          const cacheCreation = normalizeTokenCount(usage.cache_creation_input_tokens);
+          const cacheRead = normalizeTokenCount(usage.cache_read_input_tokens);
+
+          if (lastUsage && lastUsage.input === input && lastUsage.cacheRead === cacheRead) {
+            // Same API call, different streaming phase. Only add the output delta
+            // to avoid double-counting input/cache_read.
+            sessionTokens.outputTokens += Math.max(0, output - lastUsage.output);
+          } else {
+            // New API call
+            sessionTokens.inputTokens += input;
+            sessionTokens.outputTokens += output;
+            sessionTokens.cacheCreationTokens += cacheCreation;
+            sessionTokens.cacheReadTokens += cacheRead;
+          }
+          lastUsage = { input, output, cacheRead, cacheCreation };
         }
         processEntry(entry, toolMap, agentMap, taskIdToIndex, latestTodos, result);
       } catch {

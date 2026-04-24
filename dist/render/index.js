@@ -19,20 +19,16 @@ function stripAnsi(str) {
 function getTerminalWidth() {
     const stdoutColumns = process.stdout?.columns;
     if (typeof stdoutColumns === 'number' && Number.isFinite(stdoutColumns) && stdoutColumns > 0) {
-        const cols = Math.floor(stdoutColumns);
-        if (cols >= 200)
-            return cols;
+        return Math.floor(stdoutColumns);
     }
     // When running as a statusline subprocess, stdout is piped but stderr is
     // still connected to the real terminal — use it to get the actual width.
     const stderrColumns = process.stderr?.columns;
     if (typeof stderrColumns === 'number' && Number.isFinite(stderrColumns) && stderrColumns > 0) {
-        const cols = Math.floor(stderrColumns);
-        if (cols >= 200)
-            return cols;
+        return Math.floor(stderrColumns);
     }
     const envColumns = Number.parseInt(process.env.COLUMNS ?? '', 10);
-    if (Number.isFinite(envColumns) && envColumns >= 200) {
+    if (Number.isFinite(envColumns) && envColumns > 0) {
         return envColumns;
     }
     return UNKNOWN_TERMINAL_WIDTH;

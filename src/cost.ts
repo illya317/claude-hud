@@ -1,5 +1,5 @@
 import type { SessionTokenUsage, StdinData } from './types.js';
-import { getProviderLabel } from './stdin.js';
+import { getProviderLabel, getModelName } from './stdin.js';
 
 type Currency = 'USD' | 'CNY';
 
@@ -75,6 +75,9 @@ const MODEL_PRICING: Array<{ pattern: RegExp; pricing: ModelPricing }> = [
   // MiniMax (explicit cache write pricing)
   { pattern: /\bminimax[-\s]?m?2[.\s]?7[-\s]?highspeed\b/i, pricing: { inputPricePerMillion: 4.2, outputPricePerMillion: 16.8, cacheWritePricePerMillion: 5.25, cacheReadPricePerMillion: 0.42, currency: 'CNY' } },
   { pattern: /\bminimax[-\s]?m?2[.\s]?7\b/i, pricing: { inputPricePerMillion: 2.1, outputPricePerMillion: 8.4, cacheWritePricePerMillion: 2.625, cacheReadPricePerMillion: 0.42, currency: 'CNY' } },
+
+  // Generic Kimi fallback (models that don't match specific version patterns)
+  { pattern: /\bkimi\b/i, pricing: deepseekKimi(6.5, 1.1, 27) },
 ];
 
 function normalizeModelName(modelName: string): string {
@@ -148,10 +151,20 @@ function getNativeCost(stdin: StdinData): { totalCost: number; currency: Currenc
   if (typeof nativeCost !== 'number' || !Number.isFinite(nativeCost)) return null;
   if (getProviderLabel(stdin)) return null;
 
-  // For non-Anthropic models, total_cost_usd is Claude Code's estimate
-  // using Anthropic pricing — skip it and use our model-specific estimate.
   const pricing = getModelPricing(stdin);
-  if (pricing && pricing.currency !== 'USD') return null;
+  if (pricing) {
+    // For non-Anthropic models, total_cost_usd is Claude Code's estimate
+    // using Anthropic pricing — skip it and use our model-specific estimate.
+    if (pricing.currency !== 'USD') return null;
+    return { totalCost: nativeCost, currency: 'USD' };
+  }
+
+  // No pricing match — if this looks like a non-Anthropic model, skip the
+  // native cost (it's Claude Code's Anthropic-priced estimate, which is wrong).
+  const modelName = getModelName(stdin).toLowerCase();
+  if (modelName.includes('kimi') || modelName.includes('deepseek') || modelName.includes('minimax')) {
+    return null;
+  }
 
   return { totalCost: nativeCost, currency: 'USD' };
 }
