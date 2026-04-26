@@ -32,10 +32,10 @@ const MODEL_PRICING = [
     { pattern: /\bsonnet 3[.\s]5\b/i, pricing: anthropic(3, 15) },
     { pattern: /\bhaiku 3[.\s]5\b/i, pricing: anthropic(0.8, 4) },
     // DeepSeek (cache miss = input, cache hit = read, write = miss)
-    { pattern: /\bdeepseek[-\s]?v4[-\s]?pro\b/i, pricing: deepseekKimi(12, 1, 24) },
-    { pattern: /\bdeepseek[-\s]?v4[-\s]?flash\b/i, pricing: deepseekKimi(1, 0.2, 2) },
+    { pattern: /\bdeepseek[-\s]?v4[-\s]?pro\b/i, pricing: deepseekKimi(12, 0.1, 24) },
+    { pattern: /\bdeepseek[-\s]?v4[-\s]?flash\b/i, pricing: deepseekKimi(1, 0.02, 2) },
     // Catch-all for any DeepSeek model variant
-    { pattern: /\bdeepseek\b/i, pricing: deepseekKimi(12, 1, 24) },
+    { pattern: /\bdeepseek\b/i, pricing: deepseekKimi(12, 0.1, 24) },
     // Kimi (cache miss = input, cache hit = read, write = miss)
     { pattern: /\bkimi[-\s]?k?2[.\s]?6\b/i, pricing: deepseekKimi(6.5, 1.1, 27) },
     // MiniMax (explicit cache write pricing)
